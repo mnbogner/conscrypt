@@ -175,6 +175,8 @@ import org.junit.runners.Suite;
         TrustManagerFactoryTest.class,
         VeryBasicHttpServerTest.class,
         X509KeyManagerTest.class,
+        // ECH feature tests
+        EchInteropTest.class,
 })
 public class ConscryptOpenJdkSuite {
     @BeforeClass
