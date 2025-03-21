@@ -123,49 +123,68 @@ public class NativeCryptoTest {
 
     private static RSAPrivateCrtKey TEST_RSA_KEY;
 
-    @BeforeClass
+    private static OpenSSLKey getServerPrivateKey() {
+        initStatics();
+        return SERVER_PRIVATE_KEY;
+    }
+
+    private static long[] getServerCertificateRefs() {
+        initStatics();
+        return SERVER_CERTIFICATE_REFS;
+    }
+
+    private static byte[][] getEncodedServerCertificates() {
+        initStatics();
+        return ENCODED_SERVER_CERTIFICATES;
+    }
+
     @SuppressWarnings("JdkObsolete") // Public API KeyStore.aliases() uses Enumeration
-    public static void initStatics() throws Exception {
-        if (!TestUtils.isJavaVersion(17)) {
-            Class<?> c_Platform = TestUtils.conscryptClass("Platform");
-            m_Platform_getFileDescriptor =
-                    c_Platform.getDeclaredMethod("getFileDescriptor", Socket.class);
-            m_Platform_getFileDescriptor.setAccessible(true);
+    public static void initStatics() { // throws Exception {
+        // previous version of method did not throw exception so added try/catch
+        try {
+            if (!TestUtils.isJavaVersion(17)) {
+                Class<?> c_Platform = TestUtils.conscryptClass("Platform");
+                m_Platform_getFileDescriptor =
+                        c_Platform.getDeclaredMethod("getFileDescriptor", Socket.class);
+                m_Platform_getFileDescriptor.setAccessible(true);
+            }
+
+            PrivateKeyEntry serverPrivateKeyEntry = TestKeyStore.getServer().getPrivateKey("RSA", "RSA");
+            SERVER_PRIVATE_KEY = OpenSSLKey.fromPrivateKey(serverPrivateKeyEntry.getPrivateKey());
+            SERVER_CERTIFICATES_HOLDER = encodeCertificateList(serverPrivateKeyEntry.getCertificateChain());
+            SERVER_CERTIFICATE_REFS = getCertificateReferences(SERVER_CERTIFICATES_HOLDER);
+            ENCODED_SERVER_CERTIFICATES = getEncodedCertificates(SERVER_CERTIFICATES_HOLDER);
+
+            PrivateKeyEntry clientPrivateKeyEntry = TestKeyStore.getClientCertificate().getPrivateKey("RSA", "RSA");
+            CLIENT_PRIVATE_KEY = OpenSSLKey.fromPrivateKey(clientPrivateKeyEntry.getPrivateKey());
+            CLIENT_CERTIFICATES_HOLDER = encodeCertificateList(clientPrivateKeyEntry.getCertificateChain());
+            CLIENT_CERTIFICATE_REFS = getCertificateReferences(CLIENT_CERTIFICATES_HOLDER);
+            ENCODED_CLIENT_CERTIFICATES = getEncodedCertificates(CLIENT_CERTIFICATES_HOLDER);
+
+            KeyStore ks = TestKeyStore.getClient().keyStore;
+            String caCertAlias = ks.aliases().nextElement();
+            X509Certificate certificate = (X509Certificate) ks.getCertificate(caCertAlias);
+            X500Principal principal = certificate.getIssuerX500Principal();
+            CA_PRINCIPALS = new byte[][]{principal.getEncoded()};
+
+            // NIST P-256 aka SECG secp256r1 aka X9.62 prime256v1
+            OpenSSLECGroupContext openSslSpec = OpenSSLECGroupContext.getCurveByName("prime256v1");
+            BigInteger s = new BigInteger(
+                    "229cdbbf489aea584828a261a23f9ff8b0f66f7ccac98bf2096ab3aee41497c5", 16);
+            CHANNEL_ID_PRIVATE_KEY = new OpenSSLECPrivateKey(new ECPrivateKeySpec(s, openSslSpec.getECParameterSpec()))
+                    .getOpenSSLKey();
+
+            // Channel ID is the concatenation of the X and Y coordinates of the public key.
+            CHANNEL_ID = new BigInteger(
+                    "702b07871fd7955c320b26f15e244e47eed60272124c92b9ebecf0b42f90069b"
+                            + "ab53592ebfeb4f167dbf3ce61513afb0e354c479b1c1b69874fa471293494f77",
+                    16).toByteArray();
+
+            // RSA keys are slow to generate, so prefer to reuse the key when possible.
+            TEST_RSA_KEY = generateRsaKey();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-
-        PrivateKeyEntry serverPrivateKeyEntry = TestKeyStore.getServer().getPrivateKey("RSA", "RSA");
-        SERVER_PRIVATE_KEY = OpenSSLKey.fromPrivateKey(serverPrivateKeyEntry.getPrivateKey());
-        SERVER_CERTIFICATES_HOLDER = encodeCertificateList(serverPrivateKeyEntry.getCertificateChain());
-        SERVER_CERTIFICATE_REFS = getCertificateReferences(SERVER_CERTIFICATES_HOLDER);
-        ENCODED_SERVER_CERTIFICATES = getEncodedCertificates(SERVER_CERTIFICATES_HOLDER);
-
-        PrivateKeyEntry clientPrivateKeyEntry = TestKeyStore.getClientCertificate().getPrivateKey("RSA", "RSA");
-        CLIENT_PRIVATE_KEY = OpenSSLKey.fromPrivateKey(clientPrivateKeyEntry.getPrivateKey());
-        CLIENT_CERTIFICATES_HOLDER = encodeCertificateList(clientPrivateKeyEntry.getCertificateChain());
-        CLIENT_CERTIFICATE_REFS = getCertificateReferences(CLIENT_CERTIFICATES_HOLDER);
-        ENCODED_CLIENT_CERTIFICATES = getEncodedCertificates(CLIENT_CERTIFICATES_HOLDER);
-
-        KeyStore ks = TestKeyStore.getClient().keyStore;
-        String caCertAlias = ks.aliases().nextElement();
-        X509Certificate certificate = (X509Certificate) ks.getCertificate(caCertAlias);
-        X500Principal principal = certificate.getIssuerX500Principal();
-        CA_PRINCIPALS = new byte[][] { principal.getEncoded() };
-
-        // NIST P-256 aka SECG secp256r1 aka X9.62 prime256v1
-        OpenSSLECGroupContext openSslSpec = OpenSSLECGroupContext.getCurveByName("prime256v1");
-        BigInteger s = new BigInteger(
-                "229cdbbf489aea584828a261a23f9ff8b0f66f7ccac98bf2096ab3aee41497c5", 16);
-        CHANNEL_ID_PRIVATE_KEY = new OpenSSLECPrivateKey(new ECPrivateKeySpec(s, openSslSpec.getECParameterSpec()))
-                .getOpenSSLKey();
-
-        // Channel ID is the concatenation of the X and Y coordinates of the public key.
-        CHANNEL_ID = new BigInteger(
-                "702b07871fd7955c320b26f15e244e47eed60272124c92b9ebecf0b42f90069b"
-                        + "ab53592ebfeb4f167dbf3ce61513afb0e354c479b1c1b69874fa471293494f77",
-                16).toByteArray();
-
-        // RSA keys are slow to generate, so prefer to reuse the key when possible.
-        TEST_RSA_KEY = generateRsaKey();
     }
 
     private static long[] getCertificateReferences(OpenSSLX509Certificate[] certs) {
