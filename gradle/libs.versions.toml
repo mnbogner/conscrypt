@@ -3,6 +3,7 @@ agp = "7.4.2"
 bnd = "6.4.0"
 bouncycastle = "1.67"
 caliper = "1.0-beta-2"
+multidex = "2.0.1"
 errorprone = "2.31.0"
 errorprone-plugin = "4.0.0"
 grgit = "5.2.2"
@@ -30,6 +31,10 @@ task-tree = { id = "com.dorongold.task-tree", version.ref = "task-tree" }
 [libraries]
 # Android tooling
 caliper = { module = "com.google.caliper:caliper", version.ref = "caliper" }
+
+#androidx.multidex:multidex:2.0.1
+# multidex = { module = "com.android.support:multidex", version.ref = "multidex" }
+multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
 
 # Bouncycastle
 bouncycastle-apis = { module = "org.bouncycastle:bcpkix-jdk15on", version.ref = "bouncycastle" }

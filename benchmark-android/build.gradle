@@ -22,10 +22,26 @@ android {
         targetSdkVersion androidTargetSdkVersion
         versionCode androidVersionCode
         versionName androidVersionName
+        multiDexEnabled true
     }
     lintOptions {
         // Some Caliper classes reference packages that don't exist on Android
         disable 'InvalidPackage'
+    }
+    packagingOptions {
+        pickFirst("org/bouncycastle/x509/CertPathReviewerMessages_de.properties")
+
+        /*
+        Execution failed for task ':conscrypt-benchmark-android:mergeDebugAndroidTestJavaResource'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.MergeJavaResWorkAction
+   > 3 files found with path 'META-INF/DEPENDENCIES' from inputs:
+      - /home/mnbogner/.gradle/caches/modules-2/files-2.1/com.google.inject.extensions/guice-multibindings/3.0/5e670615a927571234df68a8b1fe1a16272be555/guice-multibindings-3.0.jar
+      - /home/mnbogner/.gradle/caches/modules-2/files-2.1/com.google.inject.extensions/guice-assistedinject/3.0/544449ddb19f088dcde44f055d30a08835a954a7/guice-assistedinject-3.0.jar
+      - /home/mnbogner/.gradle/caches/modules-2/files-2.1/com.google.inject/guice/3.0/9d84f15fe35e2c716a02979fb62f50a29f38aefa/guice-3.0.jar
+     Adding a packagingOptions block may help, please refer to
+     https://developer.android.com/reference/tools/gradle-api/7.4/com/android/build/api/dsl/ResourcesPackagingOptions
+     for more information
+        */
     }
     sourceSets.main {
         java {
@@ -60,6 +76,8 @@ dependencies {
                           project(':conscrypt-libcore-stub')
 
     implementation libs.caliper
+
+    implementation libs.multidex
 }
 
 // This task bundles up everything we're going to send to the device into a single jar.
